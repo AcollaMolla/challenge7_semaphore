@@ -24,6 +24,9 @@
   static const BaseType_t app_cpu = 1;
 #endif
 
+//Semaphores
+static SemaphoreHandle_t mutex;
+
 // Settings
 enum {BUF_SIZE = 5};                  // Size of buffer array
 static const int num_prod_tasks = 5;  // Number of producer tasks
@@ -38,7 +41,7 @@ static SemaphoreHandle_t bin_sem;     // Waits for parameter to be read
 
 //*****************************************************************************
 // Tasks
-void PrintToSerial(String msg){
+void PrintToSerial(int msg){
   Serial.println(msg);
 }
 
@@ -74,7 +77,12 @@ void consumer(void *parameters) {
     // Critical section (accessing shared buffer and Serial)
     val = buf[tail];
     tail = (tail + 1) % BUF_SIZE;
-    Serial.println(val);
+    if(xSemaphoreTake(mutex,0)==pdTRUE){
+          PrintToSerial(val);
+          xSemaphoreGive(mutex);
+    }else{
+      //If mutex could not be aquired
+    }
   }
 }
 
@@ -84,7 +92,8 @@ void consumer(void *parameters) {
 void setup() {
 
   char task_name[12];
-  
+
+  mutex = xSemaphoreCreateMutex();
   // Configure Serial
   Serial.begin(115200);
 
